@@ -360,11 +360,29 @@ export class AuthService {
     const expiry = Date.now() + 3600000; // 1 hour
     await this.redisService.set(`email_verification:${verificationToken}`, JSON.stringify({ userId, expiry }));
 
+    // Import EmailService and send actual email
+    const { EmailService } = await import('../communication/email/email.service');
+    const emailService = new EmailService(this.configService, null, null, null);
+    
+    await emailService.sendTemplatedEmail(email, 'email-verification', {
+      firstName: email.split('@')[0], // Extract name from email for personalization
+      verificationUrl: `${this.configService.get<string>('BASE_URL')}/auth/verify-email/${verificationToken}`,
+    });
+
     this.logger.log(`Verification email sent to ${email}`, { userId });
     this.logger.debug(`Verification token generated for ${email}`, { userId });
   }
 
   private async sendPasswordResetEmail(email: string, resetToken: string) {
+    // Import EmailService and send actual email
+    const { EmailService } = await import('../communication/email/email.service');
+    const emailService = new EmailService(this.configService, null, null, null);
+    
+    await emailService.sendTemplatedEmail(email, 'password-reset', {
+      firstName: email.split('@')[0], // Extract name from email for personalization
+      resetUrl: `${this.configService.get<string>('BASE_URL')}/auth/reset-password/${resetToken}`,
+    });
+
     this.logger.log(`Password reset email sent to ${email}`);
     this.logger.debug(`Password reset token generated for ${email}`);
   }

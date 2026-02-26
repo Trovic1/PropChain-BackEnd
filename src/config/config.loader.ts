@@ -1,6 +1,8 @@
 import * as Joi from 'joi';
 import { ConfigEncryptionUtil } from './utils/config.encryption';
 import { configValidationSchema } from './validation/config.validation';
+import { EnvValidator } from './utils/env.validator';
+import { EnvSanitizer } from './utils/env.sanitizer';
 
 /**
  * Configuration loader with validation and environment-specific management
@@ -11,9 +13,12 @@ export class ConfigLoader {
    * @param env Environment variables object (defaults to process.env)
    * @returns Validated configuration object
    */
-  static load(env: NodeJS.ProcessEnv = process.env): any {
+  static load(env = process.env): any {
+    // Sanitize environment variables first
+    const sanitizedEnv = EnvSanitizer.sanitize(env);
+
     // Process the environment variables for encryption
-    const processedEnv = this.processEncryptedValues(env);
+    const processedEnv = this.processEncryptedValues(sanitizedEnv);
 
     // Validate the configuration
     const { error, value: validatedConfig } = configValidationSchema.validate(processedEnv, {
@@ -23,7 +28,7 @@ export class ConfigLoader {
     });
 
     if (error) {
-      const validationErrors = error.details.map(detail => detail.message);
+      const validationErrors = error.details.map((detail: any) => detail.message);
       throw new Error(`Configuration validation failed:\n${validationErrors.join('\n')}`);
     }
 
@@ -51,7 +56,7 @@ export class ConfigLoader {
    * @param env Environment variables object
    * @returns Processed environment variables with decrypted values
    */
-  private static processEncryptedValues(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  private static processEncryptedValues(env: any): any {
     const processedEnv = { ...env };
 
     // Define which environment variables should be treated as sensitive
@@ -98,8 +103,8 @@ export class ConfigLoader {
         try {
           processedEnv[key] = ConfigEncryptionUtil.decrypt(value, encryptionKey);
         } catch (error) {
-          console.error(`Failed to decrypt ${key}:`, error.message);
-          throw new Error(`Failed to decrypt ${key}: ${error.message}`);
+          console.error(`Failed to decrypt ${key}:`, error instanceof Error ? error.message : String(error));
+          throw new Error(`Failed to decrypt ${key}: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
     }
