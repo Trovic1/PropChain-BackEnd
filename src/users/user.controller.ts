@@ -6,6 +6,7 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBody,
+  ApiBearerAuth,
   ApiParam,
   ApiExtraModels,
   ApiOkResponse,
@@ -14,11 +15,13 @@ import {
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiBearerAuth,
+  ApiBody,
   ApiQuery,
   ApiConsumes,
   ApiProduces,
   ApiProperty,
   ApiPropertyOptional,
+  ApiResponseOptions,
 } from '@nestjs/swagger';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -37,6 +40,13 @@ export class UserController {
   @ApiCreatedResponse({
     description: 'User created successfully.',
     type: UserResponseDto,
+    schema: {
+      example: {
+        id: 'user_abc123',
+        email: 'john.doe@example.com',
+        isEmailVerified: false,
+      },
+    },
   })
   @ApiConflictResponse({ description: 'User already exists.' })
   @ApiBadRequestResponse({ description: 'Validation failed.' })

@@ -6,6 +6,8 @@ export type UserRole = 'USER' | 'ADMIN' | 'AGENT';
 export interface User {
   id: string;
   email: string;
+  password: string | null;
+
   walletAddress: string | null;
   role: UserRole;
   roleId: string | null;
@@ -19,5 +21,14 @@ export interface User {
   preferences: Record<string, unknown> | null;
   privacySettings: Record<string, unknown> | null;
 }
+ * Flexible enough for email/password and Web3 users
+ */
+export type CreateUserInput = {
+  email: string;
+  password?: string;
+  walletAddress?: string;
+  role?: UserRole;
+  roleId?: string;
+};
 
 export type PrismaUser = User;

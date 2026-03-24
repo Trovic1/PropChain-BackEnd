@@ -41,6 +41,7 @@ import { ValuationModule } from './valuation/valuation.module';
 import { ApiKeysModule } from './api-keys/api-keys.module';
 import { DocumentsModule } from './documents/documents.module';
 import { SecurityModule } from './security/security.module';
+import { BackupRecoveryModule } from './backup-recovery/backup-recovery.module';
 
 // Compliance & Security Modules
 import { AuditModule } from './common/audit/audit.module';
@@ -132,6 +133,7 @@ import { ObservabilityModule } from './observability/observability.module';
 
     // API Versioning
     ApiVersionModule,
+    BackupRecoveryModule,
   ],
   controllers: [
     AuditController, // Add the audit controller
