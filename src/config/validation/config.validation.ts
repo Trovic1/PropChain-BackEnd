@@ -216,6 +216,14 @@ export const configValidationSchema = Joi.object({
   AMENITIES_WEIGHT: Joi.number().min(0).max(1).default(0.2),
   MARKET_CONDITIONS_WEIGHT: Joi.number().min(0).max(1).default(0.1),
 
+  // Compression Configuration
+  COMPRESSION_ENABLED: Joi.boolean().default(true),
+  COMPRESSION_LEVEL: Joi.number().min(1).max(9).default(6),
+  COMPRESSION_THRESHOLD: Joi.number().min(0).default(1024), // 1KB
+  COMPRESSION_CONTENT_TYPES: Joi.string().default(
+    'text/,application/json,application/javascript,application/xml,application/rss+xml,application/x-javascript,image/svg+xml,font/,application/wasm'
+  ),
+
   // Health Checks
   HEALTH_CHECK_URL_TEMPLATE: Joi.string().default('http://{{region}}-api.propchain.local/health'),
   LOCAL_HEALTH_CHECK_URL: Joi.string().uri().default('http://localhost:3000/health'),

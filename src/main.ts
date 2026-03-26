@@ -3,7 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
-import * as compression from 'compression';
+import { compressionMiddleware } from './middleware/compression.middleware';
 import { AppModule } from './app.module';
 import { StructuredLoggerService } from './common/logging/logger.service';
 import { ErrorResponseDto } from './common/errors/error.dto';
@@ -23,7 +23,7 @@ async function bootstrap() {
 
   // Security middleware
   app.use(helmet());
-  app.use(compression());
+  app.use(compressionMiddleware(configService));
 
   // Enhanced security headers - CSP, HSTS, and other security headers
   const securityHeadersService = app.get(SecurityHeadersService);
