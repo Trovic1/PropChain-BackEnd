@@ -61,6 +61,10 @@ import { StaticCacheModule } from './static-cache/static-cache.module';
 // Data Export
 import { ExportModule } from './export/export.module';
 
+// Compression
+import { CompressionModule } from './common/modules/compression.module';
+import { CompressionController } from './common/controllers/compression.controller';
+
 // Middleware
 import { AuthRateLimitMiddleware } from './auth/middleware/auth.middleware';
 import { HeaderValidationMiddleware } from './security/middleware/header-validation.middleware';
@@ -164,9 +168,13 @@ import { BoundaryValidationModule } from './common/validation';
 
     // Data Export
     ExportModule,
+
+    // Compression
+    CompressionModule,
   ],
   controllers: [
     AuditController, // Add the audit controller
+    CompressionController, // Add the compression controller
   ],
   providers: [
     {
