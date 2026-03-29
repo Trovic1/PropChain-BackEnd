@@ -60,6 +60,7 @@ import { BackupRecoveryModule } from './backup-recovery/backup-recovery.module';
 import { AuditModule } from './common/audit/audit.module';
 import { RbacModule } from './rbac/rbac.module';
 import { AuditController } from './common/controllers/audit.controller';
+import { ComplianceModule } from './common/compliance/compliance.module';
 
 // API Versioning
 import { ApiVersionModule } from './common/api-version';
@@ -171,6 +172,7 @@ import { BoundaryValidationModule } from './common/validation';
     // Compliance & Security
     AuditModule,
     RbacModule,
+    ComplianceModule,
 
     // API Versioning
     ApiVersionModule,
