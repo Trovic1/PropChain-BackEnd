@@ -1,9 +1,4 @@
-import {
-  Module,
-  NestModule,
-  MiddlewareConsumer,
-  ClassSerializerInterceptor,
-} from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer, ClassSerializerInterceptor } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -29,12 +24,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 import { AllExceptionsFilter } from './common/errors/error.filter';
 
 // I18n
-import {
-  I18nModule,
-  AcceptLanguageResolver,
-  QueryResolver,
-  HeaderResolver,
-} from 'nestjs-i18n';
+import { I18nModule, AcceptLanguageResolver, QueryResolver, HeaderResolver } from 'nestjs-i18n';
 import * as path from 'path';
 
 // Redis
@@ -55,6 +45,7 @@ import { ApiKeysModule } from './api-keys/api-keys.module';
 import { DocumentsModule } from './documents/documents.module';
 import { SecurityModule } from './security/security.module';
 import { BackupRecoveryModule } from './backup-recovery/backup-recovery.module';
+import { GatewayModule } from './gateway/gateway.module';
 
 // Compliance & Security Modules
 import { AuditModule } from './common/audit/audit.module';
@@ -114,11 +105,7 @@ import { BoundaryValidationModule } from './common/validation';
           watch: true,
         },
       }),
-      resolvers: [
-        { use: QueryResolver, options: ['lang'] },
-        AcceptLanguageResolver,
-        new HeaderResolver(['x-lang']),
-      ],
+      resolvers: [{ use: QueryResolver, options: ['lang'] }, AcceptLanguageResolver, new HeaderResolver(['x-lang'])],
       inject: [ConfigService],
     }),
 
@@ -187,6 +174,9 @@ import { BoundaryValidationModule } from './common/validation';
     // Data Export
     ExportModule,
 
+    // Gateway
+    GatewayModule,
+
     // Donations
     DonationsModule,
     WithdrawalsModule,
@@ -194,10 +184,7 @@ import { BoundaryValidationModule } from './common/validation';
     // Compression
     CompressionModule,
   ],
-  controllers: [
-    AuditController,
-    CompressionController,
-  ],
+  controllers: [AuditController, CompressionController],
   providers: [
     {
       provide: APP_INTERCEPTOR,
