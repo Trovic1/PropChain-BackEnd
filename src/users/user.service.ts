@@ -274,6 +274,57 @@ export class UserService extends BaseService {
   }
 
   /**
+   * Update user information
+   *
+   * Updates user fields including email with proper validation.
+   * This method is protected by wallet signature verification.
+   *
+   * @param {string} id - User ID
+   * @param {UpdateUserDto} updateUserDto - Partial user data to update
+   * @returns {Promise<User>} Updated user object
+   * @throws {NotFoundException} If user doesn't exist
+   * @throws {ConflictException} If email already exists
+   *
+   * @example
+   * ```typescript
+   * const updatedUser = await userService.update('user_123', { email: 'new@example.com' });
+   * ```
+   */
+  async update(id: string, updateUserDto: any) {
+    // Check if user exists
+    const existingUser = await this.prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!existingUser) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    // If updating email, check for conflicts
+    if (updateUserDto.email && updateUserDto.email !== existingUser.email) {
+      const emailExists = await this.prisma.user.findUnique({
+        where: { email: updateUserDto.email },
+      });
+
+      if (emailExists) {
+        throw new ConflictException(`Email ${updateUserDto.email} is already in use`);
+      }
+    }
+
+    // Update user
+    const updatedUser = await this.prisma.user.update({
+      where: { id },
+      data: updateUserDto,
+    });
+
+    // Invalidate cache
+    await this.cacheService.del(`user:detail:${id}`);
+
+    this.logger.log(`User updated: ${id}`);
+    return updatedUser;
+  }
+
+  /**
    * Find user by blockchain wallet address
    *
    * Supports Web3 authentication without traditional email/password.

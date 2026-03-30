@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import {
@@ -22,14 +22,23 @@ import {
 import { UserResponseDto } from './dto/user-response.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserPreferences, PrivacySettings, TransactionMetadata } from '../utils/type-validation.utils';
+import { DuplicateProtectionGuard } from '../common/guards/duplicate-protection.guard';
+import { DuplicateProtection } from '../common/decorators/duplicate-protection.decorator';
+import { WalletSignatureGuard } from '../auth/guards/wallet-signature.guard';
 
 @ApiTags('users')
 @Controller({ path: 'users', version: '1' })
 @ApiExtraModels(UserResponseDto)
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userService: UserService) { }
 
   @Post()
+  @UseGuards(DuplicateProtectionGuard)
+  @DuplicateProtection({
+    validator: 'checkUserDuplicate',
+    fields: ['email', 'walletAddress'],
+    options: { strict: true },
+  })
   @ApiOperation({
     summary: 'Create a new user',
     description: 'Register a new user with email, password, and optional profile fields.',
@@ -57,6 +66,20 @@ export class UserController {
   @ApiNotFoundResponse({ description: 'User not found.' })
   findOne(@Param('id') id: string) {
     return this.userService.findById(id);
+  }
+
+  @Patch(':id')
+  @UseGuards(WalletSignatureGuard)
+  @ApiOperation({ 
+    summary: 'Update user information', 
+    description: 'Update user information including email. Requires wallet signature verification.' 
+  })
+  @ApiOkResponse({ description: 'User updated successfully.', type: UserResponseDto })
+  @ApiNotFoundResponse({ description: 'User not found.' })
+  @ApiBadRequestResponse({ description: 'Validation failed.' })
+  @ApiBearerAuth()
+  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+    return this.userService.update(id, updateUserDto);
   }
   // Add @ApiVersion('1') to all endpoints for explicit versioning
   // ...existing code for advanced features...

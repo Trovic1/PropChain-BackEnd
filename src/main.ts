@@ -8,9 +8,10 @@ import { AppModule } from './app.module';
 import { StructuredLoggerService } from './common/logging/logger.service';
 import { ErrorResponseDto } from './common/errors/error.dto';
 import { SecurityHeadersService } from './security/services/security-headers.service';
+import { CorsValidationService } from './security/services/cors-validation.service';
 import { DEFAULT_API_VERSION } from './common/api-version';
-import { CorsOriginValidator } from './config/utils/cors-origin.validator';
 import { ValidationExceptionFilter } from './common/filters/validation-exception.filter';
+import { CorsOriginValidator } from './config/utils/cors-origin.validator';
 import { DataSource } from 'typeorm';
 import { connectWithRetry } from './database/retry-connection';
 
@@ -29,7 +30,8 @@ async function bootstrap() {
 
   // Enhanced security headers
   const securityHeadersService = app.get(SecurityHeadersService);
-  const isProduction = configService.get('NODE_ENV') === 'production';
+  const nodeEnv = configService.get('NODE_ENV', 'development');
+  const isProduction = nodeEnv === 'production';
   const securityConfig = isProduction
     ? undefined
     : securityHeadersService.getDevelopmentConfig();
@@ -68,28 +70,22 @@ async function bootstrap() {
   logger.log(`Security headers configured: ${Object.keys(securityHeaders).length} headers applied`);
 
   // CORS configuration
-  const corsOrigin = configService.get('CORS_ORIGIN');
-  const nodeEnv = configService.get('NODE_ENV', 'development');
-  const validatedOrigins = CorsOriginValidator.validate(corsOrigin, nodeEnv);
-
-  if (!validatedOrigins) {
-    logger.error('Invalid CORS configuration detected. Application cannot start with insecure CORS settings.');
-    if (nodeEnv === 'production' || nodeEnv === 'staging') {
+  const corsValidationService = app.get(CorsValidationService);
+  const corsValidation = corsValidationService.validateConfig();
+  if (!corsValidation.isValid) {
+    logger.error(`Invalid CORS configuration detected: ${corsValidation.errors.join(', ')}`);
+    if (isProduction || nodeEnv === 'staging') {
       process.exit(1);
     }
   }
 
-  const corsOrigins = CorsOriginValidator.parseForNestJs(corsOrigin);
-  app.enableCors({
-    origin: corsOrigins,
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-correlation-id'],
-  });
-  logger.log(`CORS configured with origins: ${corsOrigins.join(', ')}`);
+  app.enableCors(corsValidationService.getNestCorsOptions());
+  const corsConfig = corsValidationService.getCorsConfig();
+  logger.log(
+    `CORS configured for ${corsConfig.allowedOrigins.length} origin rule(s); credentials=${String(corsConfig.allowCredentials)}`,
+  );
 
-  // Global filters & pipes
-  app.useGlobalFilters(new ValidationExceptionFilter());
+  // Global pipes
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

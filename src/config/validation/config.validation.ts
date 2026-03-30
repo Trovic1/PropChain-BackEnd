@@ -6,16 +6,17 @@ import * as Joi from 'joi';
  * - Production/staging must use specific domains
  */
 const corsOriginValidation = (value: string, helpers: Joi.CustomHelpers) => {
-  const nodeEnv = Joi.ref('$NODE_ENV');
+  const env = helpers.prefs?.context?.NODE_ENV || helpers.state?.ancestors?.[0]?.NODE_ENV || 'development';
 
-  // If no value provided, error
   if (!value || value.trim() === '') {
-    return helpers.error('cors.origin.required');
+    if (env === 'production' || env === 'staging') {
+      return helpers.error('cors.origin.required');
+    }
+    return '';
   }
 
   // Allow '*' only in development and test
   if (value === '*') {
-    const env = helpers.prefs?.context?.NODE_ENV || 'development';
     if (env !== 'development' && env !== 'test') {
       return helpers.error('cors.origin.wildcard.notAllowed');
     }
@@ -33,7 +34,6 @@ const corsOriginValidation = (value: string, helpers: Joi.CustomHelpers) => {
 
     // Allow 'http://localhost' and 'http://localhost:*' variants
     if (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
-      const env = helpers.prefs?.context?.NODE_ENV || 'development';
       if (env !== 'development' && env !== 'test') {
         return helpers.error('cors.origin.localhost.notAllowed');
       }
@@ -58,13 +58,34 @@ export const configValidationSchema = Joi.object({
   PORT: Joi.number().default(3000),
   HOST: Joi.string().default('0.0.0.0'),
   API_PREFIX: Joi.string().default('api'),
-  CORS_ORIGIN: Joi.string().custom(corsOriginValidation).default('*').messages({
-    'cors.origin.required': 'CORS_ORIGIN is required',
+  CORS_ORIGIN: Joi.string().allow('').custom(corsOriginValidation).default('').messages({
+    'cors.origin.required': 'CORS_ORIGIN or CORS_ALLOWED_ORIGINS is required',
     'cors.origin.wildcard.notAllowed':
       'Wildcard (*) origin is not allowed in production/staging. Specify explicit allowed origins.',
     'cors.origin.localhost.notAllowed': 'Localhost origins are not allowed in production/staging',
     'cors.origin.invalidFormat': 'Invalid origin format: "{{origin}}". Must be a valid URL (e.g., https://example.com)',
   }),
+  CORS_ALLOWED_ORIGINS: Joi.string().allow('').custom(corsOriginValidation).default('').messages({
+    'cors.origin.required': 'CORS_ALLOWED_ORIGINS or CORS_ORIGIN is required',
+    'cors.origin.wildcard.notAllowed':
+      'Wildcard (*) origin is not allowed in production/staging. Specify explicit allowed origins.',
+    'cors.origin.localhost.notAllowed': 'Localhost origins are not allowed in production/staging',
+    'cors.origin.invalidFormat': 'Invalid origin format: "{{origin}}". Must be a valid URL (e.g., https://example.com)',
+  }),
+  CORS_CREDENTIALS_ENABLED: Joi.boolean().default(true),
+  CORS_ALLOWED_METHODS: Joi.alternatives().try(
+    Joi.array().items(Joi.string().trim().uppercase()),
+    Joi.string().custom((value: string) => value.split(',').map(item => item.trim().toUpperCase())),
+  ).default(['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']),
+  CORS_ALLOWED_HEADERS: Joi.alternatives().try(
+    Joi.array().items(Joi.string().trim()),
+    Joi.string().custom((value: string) => value.split(',').map(item => item.trim())),
+  ).default(['Content-Type', 'Authorization', 'X-Requested-With', 'x-correlation-id', 'Accept-Version']),
+  CORS_EXPOSED_HEADERS: Joi.alternatives().try(
+    Joi.array().items(Joi.string().trim()),
+    Joi.string().custom((value: string) => value.split(',').map(item => item.trim())),
+  ).default(['x-correlation-id', 'x-request-id']),
+  CORS_MAX_AGE: Joi.number().min(0).default(3600),
   SWAGGER_ENABLED: Joi.boolean().default(true),
   API_VERSIONING_ENABLED: Joi.boolean().default(true),
 
@@ -109,12 +130,24 @@ export const configValidationSchema = Joi.object({
   THROTTLE_TTL: Joi.number().default(60),
   THROTTLE_LIMIT: Joi.number().default(10),
   API_KEY_RATE_LIMIT_PER_MINUTE: Joi.number().default(60),
+  RATE_LIMIT_ENABLED: Joi.boolean().default(true),
 
   // Advanced Rate Limiting
   RATE_LIMIT_API_PER_MINUTE: Joi.number().default(100),
   RATE_LIMIT_AUTH_PER_MINUTE: Joi.number().default(5),
+  RATE_LIMIT_ADMIN_PER_MINUTE: Joi.number().default(30),
+  RATE_LIMIT_READ_PER_MINUTE: Joi.number().default(120),
+  RATE_LIMIT_WRITE_PER_MINUTE: Joi.number().default(60),
   RATE_LIMIT_EXPENSIVE_PER_MINUTE: Joi.number().default(10),
   RATE_LIMIT_USER_PER_HOUR: Joi.number().default(1000),
+  RATE_LIMIT_API_BURST: Joi.number().default(20),
+  RATE_LIMIT_AUTH_BURST: Joi.number().default(1),
+  RATE_LIMIT_ADMIN_BURST: Joi.number().default(5),
+  RATE_LIMIT_READ_BURST: Joi.number().default(30),
+  RATE_LIMIT_WRITE_BURST: Joi.number().default(10),
+  RATE_LIMIT_EXPENSIVE_BURST: Joi.number().default(2),
+  RATE_LIMIT_USER_BURST: Joi.number().default(100),
+  RATE_LIMIT_WHITELIST_IPS: Joi.string().allow('').default(''),
 
   // IP Blocking
   MAX_FAILED_ATTEMPTS: Joi.number().default(5),
@@ -227,4 +260,10 @@ export const configValidationSchema = Joi.object({
   // Health Checks
   HEALTH_CHECK_URL_TEMPLATE: Joi.string().default('http://{{region}}-api.propchain.local/health'),
   LOCAL_HEALTH_CHECK_URL: Joi.string().uri().default('http://localhost:3000/health'),
+
+  // Stellar Configuration
+  STELLAR_NETWORK: Joi.string().valid('public', 'testnet').default('testnet'),
+  STELLAR_SECRET_KEY: Joi.string().optional(), // Encrypted platform secret key
+  STELLAR_BASE_FEE: Joi.number().default(100), // Base fee in stroops
+  STELLAR_TIMEOUT: Joi.number().default(30000), // Transaction timeout in ms
 });

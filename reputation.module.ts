@@ -1,0 +1,13 @@
+/**
+ * @fileoverview Module for handling reputation logic.
+ * @issue #207
+ */
+
+import { Module } from '@nestjs/common';
+import { ReputationService } from './reputation.service';
+
+@Module({
+  providers: [ReputationService],
+  exports: [ReputationService],
+})
+export class ReputationModule {}

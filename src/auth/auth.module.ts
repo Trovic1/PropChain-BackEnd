@@ -9,6 +9,8 @@ import { LocalStrategy } from './strategies/local.strategy';
 import { Web3Strategy } from './strategies/web3.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LoginAttemptsGuard } from './guards/login-attempts.guard';
+import { WalletSignatureService } from './wallet-signature.service';
+import { WalletSignatureGuard } from './guards/wallet-signature.guard';
 import { MfaModule } from './mfa/mfa.module';
 import { UsersModule } from '../users/users.module';
 
@@ -35,6 +37,7 @@ import { UsersModule } from '../users/users.module';
     JwtStrategy,
     LocalStrategy,
     Web3Strategy,
+    WalletSignatureService,
     {
       provide: 'JwtAuthGuard',
       useClass: JwtAuthGuard,
@@ -43,9 +46,13 @@ import { UsersModule } from '../users/users.module';
       provide: 'LoginAttemptsGuard',
       useClass: LoginAttemptsGuard,
     },
+    {
+      provide: 'WalletSignatureGuard',
+      useClass: WalletSignatureGuard,
+    },
     // NOTE: Removed UserService here because it's now imported via UsersModule
     // NOTE: Removed RedisService as it's now globally provided by LoggingModule
   ],
-  exports: [AuthService],
+  exports: [AuthService, WalletSignatureService],
 })
 export class AuthModule {}

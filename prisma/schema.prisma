@@ -51,6 +51,7 @@ model User {
   roleChanges          RoleChangeLog[]
   documents            Document[]
   exportJobs           ExportJob[]
+  reports              PropertyReport[]
 
   // Indexes for common query patterns
   @@index([email]) // For searching users by email
@@ -109,6 +110,10 @@ model Property {
   createdAt         DateTime       @default(now()) @map("created_at")
   updatedAt         DateTime       @updatedAt @map("updated_at")
 
+  // Soft delete fields for issues #258 and #259
+  deletedAt         DateTime?      @map("deleted_at")
+  isDeleted         Boolean        @default(false) @map("is_deleted")
+
   // Valuation fields
   estimatedValue    Decimal?       @map("estimated_value")
   valuationDate     DateTime?      @map("valuation_date")
@@ -133,17 +138,32 @@ model Property {
   latitude   Float?
   longitude  Float?
 
+  rejectionReason   String?        @map("rejection_reason")
+
+  // SEO metadata fields for issue #260
+  metaTitle         String?        @map("meta_title")
+  metaDescription   String?        @map("meta_description")
+  metaKeywords      String[]       @map("meta_keywords")
+
+  // Relationships
+  reports           PropertyReport[]
+  versions          PropertyVersion[]
+  availabilitySlots AvailabilitySlot[]
+
   // Indexes for geospatial queries and filtering
   @@index([latitude, longitude]) // For location-based queries
   @@index([ownerId]) // For filtering properties by owner
   @@index([status]) // For filtering by property status
   @@index([createdAt]) // For sorting/filtering by creation date
   @@index([location]) // For searching/filtering by location
-  // Consider adding an index on price if you often filter/sort by price
-  @@index([price])
-  @@index([status, createdAt(sort: Desc)])
-  @@index([ownerId, createdAt(sort: Desc)])
-  @@index([status, price])
+  @@index([price]) // For price filtering/sorting
+  @@index([status, createdAt(sort: Desc)]) // For property listings by status and date
+  @@index([ownerId, createdAt(sort: Desc)]) // For owner's properties by date
+  @@index([status, price]) // For property search by status and price
+  @@index([isDeleted]) // For filtering soft-deleted properties
+  @@index([deletedAt]) // For cleanup of old soft-deleted properties
+  @@unique([ownerId, title, location]) // Prevent duplicate properties for same owner with same title and location
+  @@unique([latitude, longitude, ownerId]) // Prevent duplicate properties at same coordinates for same owner
   @@map("properties")
 }
 
@@ -165,6 +185,7 @@ model PropertyValuation {
   @@index([propertyId])
   @@index([valuationDate])
   @@index([propertyId, valuationDate(sort: Desc)])
+  @@unique([propertyId, valuationDate, source]) // Prevent duplicate valuations for same property on same date from same source
   @@map("property_valuations")
 }
 
@@ -173,7 +194,7 @@ model Transaction {
   fromAddress   String            @map("from_address")
   toAddress     String            @map("to_address")
   amount        Decimal
-  txHash        String?           @map("tx_hash")
+  txHash        String?           @unique @map("tx_hash") // Unique constraint for blockchain transaction hash
   status        TransactionStatus  @default(PENDING)
   type          TransactionType
   propertyId    String?           @map("property_id")
@@ -183,7 +204,7 @@ model Transaction {
   buyerId           String
   sellerId          String
   currency          String
-  blockchainHash    String? 
+  blockchainHash    String? @unique // Additional unique constraint for blockchain hash
   blockNumber       Int?
   confirmations     Int      @default(0)
   escrowWallet      String?
@@ -203,8 +224,11 @@ model Transaction {
   @@index([status]) // For filtering by transaction status
   @@index([createdAt]) // For sorting/filtering by creation date
   @@index([propertyId]) // For filtering by property
-  // Consider adding an index on txHash if you often search by transaction hash
-  @@index([txHash])
+  @@index([txHash]) // For searching by transaction hash (redundant with unique but useful for queries)
+  @@index([blockchainHash]) // For searching by blockchain hash
+  @@index([blockNumber]) // For filtering by block number
+  @@index([confirmations]) // For filtering by confirmation count
+  @@unique([buyerId, sellerId, propertyId, amount, createdAt]) // Prevent duplicate transactions between same parties for same property
   @@map("transactions")
 }
 
@@ -360,6 +384,7 @@ enum UserRole {
   VIEWER
   USER
   VERIFIED_USER
+  MENTOR
 }
 
 enum PropertyStatus {
@@ -419,7 +444,7 @@ model Document {
   type          DocumentType
   status        DocumentStatus @default(PENDING)
   fileUrl       String         @map("file_url")
-  fileHash      String?        @map("file_hash")
+  fileHash      String?        @unique @map("file_hash") // Unique constraint for file hash to prevent duplicate uploads
   mimeType      String?        @map("mime_type")
   fileSize      Int?           @map("file_size")
   description   String?
@@ -440,7 +465,10 @@ model Document {
   @@index([uploadedById])
   @@index([type])
   @@index([status])
+  @@index([fileHash]) // Index for file hash lookups
   @@index([createdAt])
+  @@unique([propertyId, name, fileHash]) // Prevent duplicate documents for same property with same name and hash
+  @@unique([uploadedById, name, fileHash]) // Prevent duplicate uploads by same user with same name and hash
   @@map("documents")
 }
 
@@ -527,4 +555,252 @@ model ExportJob {
   @@index([createdAt])
   @@index([completedAt])
   @@map("export_jobs")
+}
+
+// KYC Verification model
+model KycVerification {
+  id                 String          @id @default(cuid())
+  userId             String          @map("user_id")
+  providerReferenceId String         @unique @map("provider_reference_id")
+  provider           String
+  documentType       String          @map("document_type")
+  status             KycStatus       @default(PENDING)
+  riskScore          Float?          @map("risk_score")
+  verifiedAt         DateTime?       @map("verified_at")
+  expiresAt          DateTime?       @map("expires_at")
+  rejectionReason    String?         @map("rejection_reason")
+  metadata           Json?
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([providerReferenceId])
+  @@index([createdAt])
+  @@index([expiresAt])
+  @@map("kyc_verifications")
+}
+
+// AML Check model
+model AmlCheck {
+  id                String          @id @default(cuid())
+  userId            String          @map("user_id")
+  walletAddress     String          @map("wallet_address")
+  status            AmlStatus       @default(CLEAR)
+  sanctionsMatch    Boolean         @default(false) @map("sanctions_match")
+  pepMatch          Boolean         @default(false) @map("pep_match")
+  adverseMediaMatch Boolean         @default(false) @map("adverse_media_match")
+  riskLevel         String          @map("risk_level")
+  riskScore         Float           @map("risk_score")
+  provider          String
+  metadata          Json?
+  screenedAt        DateTime        @map("screened_at")
+  createdAt         DateTime        @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([walletAddress])
+  @@index([status])
+  @@index([screenedAt])
+  @@map("aml_checks")
+}
+
+// Compliance Alert model
+model ComplianceAlert {
+  id          String              @id @default(cuid())
+  userId      String              @map("user_id")
+  alertType   String              @map("alert_type")
+  severity    AlertSeverity       @default(MEDIUM)
+  status      AlertStatus         @default(OPEN)
+  details     Json?
+  resolvedAt  DateTime?           @map("resolved_at")
+  resolvedBy  String?             @map("resolved_by")
+  resolution  String?
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([alertType])
+  @@index([status])
+  @@index([severity])
+  @@index([createdAt])
+  @@map("compliance_alerts")
+}
+
+// Data Residency model
+model DataResidency {
+  id                      String       @id @default(cuid())
+  userId                  String       @unique @map("user_id")
+  preferredRegion         String       @map("preferred_region")
+  assignedRegion          String       @map("assigned_region")
+  countryCode             String       @map("country_code")
+  storageLocation         String       @map("storage_location")
+  crossBorderTransferAllowed Boolean   @default(false) @map("cross_border_transfer_allowed")
+  applicableRegulations   String[]     @map("applicable_regulations")
+  createdAt               DateTime     @default(now()) @map("created_at")
+  updatedAt               DateTime     @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([assignedRegion])
+  @@index([countryCode])
+  @@map("data_residencies")
+}
+
+// GDPR Request model
+model GdprRequest {
+  id                     String            @id @default(cuid())
+  userId                 String            @map("user_id")
+  requestType            GdprRequestType   @map("request_type")
+  status                 GdprRequestStatus @default(PENDING)
+  details                String?
+  fields                 Json?
+  expectedCompletionDate DateTime          @map("expected_completion_date")
+  completedAt            DateTime?         @map("completed_at")
+  resultData             Json?             @map("result_data")
+  failureReason          String?           @map("failure_reason")
+  createdAt              DateTime          @default(now()) @map("created_at")
+  updatedAt              DateTime          @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([requestType])
+  @@index([status])
+  @@index([createdAt])
+  @@index([expectedCompletionDate])
+  @@map("gdpr_requests")
+}
+
+// Consent model
+model Consent {
+  id           String        @id @default(cuid())
+  userId       String        @map("user_id")
+  consentType  String        @map("consent_type")
+  granted      Boolean       @default(false)
+  grantedAt    DateTime      @map("granted_at")
+  withdrawnAt  DateTime?     @map("withdrawn_at")
+  version      String        @default("1.0")
+  ipAddress    String?       @map("ip_address")
+  userAgent    String?       @map("user_agent")
+  notes        String?
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([consentType])
+  @@index([granted])
+  @@unique([userId, consentType])
+  @@map("consents")
+}
+
+enum KycStatus {
+  PENDING
+  IN_REVIEW
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+enum AmlStatus {
+  CLEAR
+  FLAGGED
+  UNDER_REVIEW
+  BLOCKED
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AlertStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum GdprRequestType {
+  DATA_EXPORT
+  DATA_DELETION
+  DATA_CORRECTION
+  CONSENT_WITHDRAWAL
+}
+
+enum GdprRequestStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+model PropertyReport {
+  id              String   @id @default(cuid())
+  propertyId      String   @map("property_id")
+  reporterId      String   @map("reporter_id")
+  reason          String
+  details         String?
+  status          ReportStatus @default(PENDING)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  property        Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  reporter        User     @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@index([reporterId])
+  @@index([status])
+  @@map("property_reports")
+}
+
+enum ReportStatus {
+  PENDING
+  UNDER_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+model PropertyVersion {
+  id              String   @id @default(cuid())
+  propertyId      String   @map("property_id")
+  versionNumber   Int      @map("version_number")
+  data            Json
+  changedById     String   @map("changed_by_id")
+  changeReason    String?  @map("change_reason")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  property        Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@index([versionNumber])
+  @@unique([propertyId, versionNumber])
+  @@map("property_versions")
+}
+
+model AvailabilitySlot {
+  id              String   @id @default(cuid())
+  propertyId      String   @map("property_id")
+  startTime       DateTime @map("start_time")
+  endTime         DateTime @map("end_time")
+  isReserved      Boolean  @default(false) @map("is_reserved")
+  reservedById    String?  @map("reserved_by_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  property        Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@index([startTime, endTime])
+  @@map("availability_slots")
 }

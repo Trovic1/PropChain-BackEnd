@@ -1,9 +1,4 @@
-import {
-  Module,
-  NestModule,
-  MiddlewareConsumer,
-  ClassSerializerInterceptor,
-} from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer, ClassSerializerInterceptor } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -29,12 +24,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 import { AllExceptionsFilter } from './common/errors/error.filter';
 
 // I18n
-import {
-  I18nModule,
-  AcceptLanguageResolver,
-  QueryResolver,
-  HeaderResolver,
-} from 'nestjs-i18n';
+import { I18nModule, AcceptLanguageResolver, QueryResolver, HeaderResolver } from 'nestjs-i18n';
 import * as path from 'path';
 
 // Redis
@@ -55,17 +45,21 @@ import { ApiKeysModule } from './api-keys/api-keys.module';
 import { DocumentsModule } from './documents/documents.module';
 import { SecurityModule } from './security/security.module';
 import { BackupRecoveryModule } from './backup-recovery/backup-recovery.module';
+import { GatewayModule } from './gateway/gateway.module';
+import { ErrorsModule } from './errors/errors.module';
 
 // Compliance & Security Modules
 import { AuditModule } from './common/audit/audit.module';
 import { RbacModule } from './rbac/rbac.module';
 import { AuditController } from './common/controllers/audit.controller';
+import { ComplianceModule } from './common/compliance/compliance.module';
 
 // API Versioning
 import { ApiVersionModule } from './common/api-version';
 
 // Feature Flags
 import { FeatureFlagModule } from './feature-flags/feature-flag.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 // Static Cache
 import { StaticCacheModule } from './static-cache/static-cache.module';
@@ -78,8 +72,8 @@ import { CompressionModule } from './common/modules/compression.module';
 import { CompressionController } from './common/controllers/compression.controller';
 
 // Middleware
-import { AuthRateLimitMiddleware } from './auth/middleware/auth.middleware';
 import { HeaderValidationMiddleware } from './security/middleware/header-validation.middleware';
+import { RateLimitMiddleware } from './security/middleware/rate-limit.middleware';
 import { RequestValidationInterceptor } from './security/api/request.validation';
 import { StaticCacheMiddleware } from './static-cache/middleware/static-cache.middleware';
 import { ObservabilityModule } from './observability/observability.module';
@@ -113,11 +107,7 @@ import { BoundaryValidationModule } from './common/validation';
           watch: true,
         },
       }),
-      resolvers: [
-        { use: QueryResolver, options: ['lang'] },
-        AcceptLanguageResolver,
-        new HeaderResolver(['x-lang']),
-      ],
+      resolvers: [{ use: QueryResolver, options: ['lang'] }, AcceptLanguageResolver, new HeaderResolver(['x-lang'])],
       inject: [ConfigService],
     }),
 
@@ -167,10 +157,12 @@ import { BoundaryValidationModule } from './common/validation';
     ValuationModule,
     DocumentsModule,
     SecurityModule,
+    ErrorsModule,
 
     // Compliance & Security
     AuditModule,
     RbacModule,
+    ComplianceModule,
 
     // API Versioning
     ApiVersionModule,
@@ -178,12 +170,16 @@ import { BoundaryValidationModule } from './common/validation';
 
     // Feature Flags
     FeatureFlagModule,
+    AnalyticsModule,
 
     // Static Cache
     StaticCacheModule,
 
     // Data Export
     ExportModule,
+
+    // Gateway
+    GatewayModule,
 
     // Donations
     DonationsModule,
@@ -192,10 +188,7 @@ import { BoundaryValidationModule } from './common/validation';
     // Compression
     CompressionModule,
   ],
-  controllers: [
-    AuditController,
-    CompressionController,
-  ],
+  controllers: [AuditController, CompressionController],
   providers: [
     {
       provide: APP_INTERCEPTOR,
@@ -226,7 +219,7 @@ export class AppModule implements NestModule {
       .forRoutes('*')
       .apply(HeaderValidationMiddleware)
       .forRoutes('*')
-      .apply(AuthRateLimitMiddleware)
-      .forRoutes('/auth*');
+      .apply(RateLimitMiddleware)
+      .forRoutes('*');
   }
 }
