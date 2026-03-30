@@ -202,4 +202,44 @@ export class CreatePropertyDto {
   @Min(0, { message: 'Area cannot be negative' })
   @Max(1000000, { message: 'Area cannot exceed 1,000,000 sq ft' })
   areaSqFt?: number;
+
+  // SEO metadata fields for issue #260
+  @ApiPropertyOptional({
+    description: 'SEO meta title',
+    example: 'Luxury Downtown Apartment - Prime Location',
+    maxLength: 200,
+  })
+  @IsOptional()
+  @IsString({ message: 'Meta title must be a string' })
+  @MaxLength(200, { message: 'Meta title must not exceed 200 characters' })
+  @IsXssSafe({ message: 'Meta title contains potentially malicious content' })
+  @IsNotSqlInjection({ message: 'Meta title contains potential SQL injection' })
+  metaTitle?: string;
+
+  @ApiPropertyOptional({
+    description: 'SEO meta description',
+    example: 'Beautiful 2-bedroom apartment with city views, perfect for urban living',
+    maxLength: 500,
+  })
+  @IsOptional()
+  @IsString({ message: 'Meta description must be a string' })
+  @MaxLength(500, { message: 'Meta description must not exceed 500 characters' })
+  @IsXssSafe({ message: 'Meta description contains potentially malicious content' })
+  @IsNotSqlInjection({ message: 'Meta description contains potential SQL injection' })
+  metaDescription?: string;
+
+  @ApiPropertyOptional({
+    description: 'SEO meta keywords',
+    example: ['luxury', 'apartment', 'downtown', 'city views', 'urban living'],
+    type: [String],
+    maxItems: 10,
+  })
+  @IsOptional()
+  @IsArray({ message: 'Meta keywords must be an array' })
+  @IsString({ each: true, message: 'Each keyword must be a string' })
+  @ArrayMaxSize(10, { message: 'Cannot have more than 10 meta keywords' })
+  @MaxLength(50, { each: true, message: 'Each keyword must not exceed 50 characters' })
+  @IsXssSafe({ each: true, message: 'Keyword contains potentially malicious content' })
+  @IsNotSqlInjection({ each: true, message: 'Keyword contains potential SQL injection' })
+  metaKeywords?: string[];
 }

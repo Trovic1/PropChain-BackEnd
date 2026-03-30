@@ -88,4 +88,24 @@ export class PropertyResponseDto {
     example: '2024-01-22T09:00:00.000Z',
   })
   updatedAt: Date;
+
+  // SEO metadata fields for issue #260
+  @ApiPropertyOptional({
+    description: 'SEO meta title',
+    example: 'Luxury Downtown Apartment - Prime Location',
+  })
+  metaTitle?: string;
+
+  @ApiPropertyOptional({
+    description: 'SEO meta description',
+    example: 'Beautiful 2-bedroom apartment with city views, perfect for urban living',
+  })
+  metaDescription?: string;
+
+  @ApiPropertyOptional({
+    description: 'SEO meta keywords',
+    example: ['luxury', 'apartment', 'downtown', 'city views', 'urban living'],
+    type: [String],
+  })
+  metaKeywords?: string[];
 }
