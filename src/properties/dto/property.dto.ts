@@ -1,7 +1,15 @@
 import { IsString, IsNumber, IsOptional, IsArray, IsIn } from 'class-validator';
 
-export const PROPERTY_STATUS_ENUM = ['DRAFT', 'PENDING', 'ACTIVE', 'UNDER_CONTRACT', 'SOLD', 'RENTED', 'ARCHIVED'] as const;
-export type PropertyStatus = typeof PROPERTY_STATUS_ENUM[number];
+export const PROPERTY_STATUS_ENUM = [
+  'DRAFT',
+  'PENDING',
+  'ACTIVE',
+  'UNDER_CONTRACT',
+  'SOLD',
+  'RENTED',
+  'ARCHIVED',
+] as const;
+export type PropertyStatus = (typeof PROPERTY_STATUS_ENUM)[number];
 
 export class CreatePropertyDto {
   @IsString()

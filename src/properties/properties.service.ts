@@ -8,7 +8,7 @@ export class PropertiesService {
 
   async create(createPropertyDto: CreatePropertyDto, ownerId: string) {
     const { price, squareFeet, lotSize, ...rest } = createPropertyDto;
-    
+
     return this.prisma.property.create({
       data: {
         ...rest,
@@ -22,12 +22,7 @@ export class PropertiesService {
     });
   }
 
-  async findAll(params?: {
-    skip?: number;
-    take?: number;
-    where?: any;
-    orderBy?: any;
-  }) {
+  async findAll(params?: { skip?: number; take?: number; where?: any; orderBy?: any }) {
     const { skip, take, where, orderBy } = params || {};
     return this.prisma.property.findMany({
       skip,
@@ -66,7 +61,7 @@ export class PropertiesService {
 
   async update(id: string, updatePropertyDto: UpdatePropertyDto) {
     const { price, squareFeet, lotSize, ...rest } = updatePropertyDto;
-    
+
     return this.prisma.property.update({
       where: { id },
       data: {
