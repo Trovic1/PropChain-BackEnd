@@ -6,11 +6,13 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ApiKey, TokenType, User } from '../types/prisma.types';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import * as jwt from 'jsonwebtoken';
 import { PrismaService } from '../database/prisma.service';
 import { UsersService } from '../users/users.service';
+import { SessionsService } from '../sessions/sessions.service';
 import { EmailService } from '../email/email.service';
 import {
   ChangePasswordDto,
@@ -38,8 +40,9 @@ import {
   verifyTotpCode,
 } from './security.utils';
 import { AuthUserPayload } from './types/auth-user.type';
+
 import { LoginRateLimitService } from './login-rate-limit.service';
-import { UserRole } from '@prisma/client';
+import { UserRole } from '../types/prisma.types';
 
 type JwtPayload = {
   sub: string;
@@ -64,6 +67,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly usersService: UsersService,
+    private readonly sessionsService: SessionsService,
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
     private readonly rateLimitService: LoginRateLimitService,
@@ -80,6 +84,19 @@ export class AuthService {
       7 * 24 * 60 * 60,
     );
     this.bcryptRounds = parseInt(this.configService.get<string>('BCRYPT_ROUNDS') ?? '12', 10);
+  }
+
+  /**
+   * Helper to map transactions to activity items for dashboard
+   */
+  private transactionsToActivityItems(transactions: any[], type: 'purchase' | 'sale') {
+    return transactions.map((tx) => ({
+      type: 'transaction' as const,
+      id: tx.id,
+      title: `Property ${type === 'purchase' ? 'Purchased' : 'Sold'}: ${tx.property?.title || 'Unknown'}`,
+      description: `${type === 'purchase' ? 'Bought' : 'Sold'} for $${tx.amount}`,
+      timestamp: tx.createdAt,
+    }));
   }
 
   async register(data: RegisterDto) {
@@ -429,15 +446,7 @@ export class AuthService {
     return sanitizeUser(foundUser);
   }
 
-  private transactionsToActivityItems(transactions: any[], type: 'purchase' | 'sale') {
-    return transactions.map((tx) => ({
-      type: 'transaction' as const,
-      id: tx.id,
-      title: `Property ${type === 'purchase' ? 'Purchased' : 'Sold'}: ${tx.property?.title || 'Unknown'}`,
-      description: `${type === 'purchase' ? 'Bought' : 'Sold'} for $${tx.amount}`,
-      timestamp: tx.createdAt,
-    }));
-  }
+  // Only one implementation should exist; duplicate removed.
 
   async getDashboard(user: AuthUserPayload) {
     const foundUser = await this.prisma.user.findUnique({
@@ -554,7 +563,7 @@ export class AuthService {
     const recentActivity = [
       ...this.transactionsToActivityItems(buyerTransactions, 'purchase'),
       ...this.transactionsToActivityItems(sellerTransactions, 'sale'),
-      ...documents.map((doc) => ({
+      ...documents.map((doc: any) => ({
         type: 'document' as const,
         id: doc.id,
         title: doc.fileName,
@@ -578,7 +587,7 @@ export class AuthService {
         apiKeysCount: apiKeys.length,
       },
       recentActivity,
-      recommendations: recommendationProperties.map((p) => ({
+      recommendations: recommendationProperties.map((p: any) => ({
         id: p.id,
         title: p.title,
         address: p.address,
@@ -878,13 +887,18 @@ export class AuthService {
     return {
       sub: apiKey.userId,
       email: apiKey.user.email,
-      role: apiKey.user.role,
+      role: apiKey.user.role as UserRole,
       type: 'api-key',
       apiKeyId: apiKey.id,
     };
   }
 
-  private async issueTokenPair(user: any, tokenFamily?: string) {
+  private async issueTokenPair(
+    user: User,
+    tokenFamily?: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
     const accessJti = randomUUID();
     const refreshJti = randomUUID();
     const family = tokenFamily || randomUUID(); // Create new family if not provided
@@ -893,7 +907,7 @@ export class AuthService {
       {
         sub: user.id,
         email: user.email,
-        role: user.role,
+        role: user.role as UserRole,
         type: 'access',
         jti: accessJti,
         family: family,
@@ -906,12 +920,22 @@ export class AuthService {
       {
         sub: user.id,
         email: user.email,
-        role: user.role,
+        role: user.role as UserRole,
         type: 'refresh',
         jti: refreshJti,
         family: family,
       },
       this.jwtRefreshSecret,
+      this.refreshTokenTtlSeconds,
+    );
+
+    // Create a session for tracking
+    await this.sessionsService.createSession(
+      user.id,
+      accessJti,
+      refreshJti,
+      ipAddress,
+      userAgent,
       this.refreshTokenTtlSeconds,
     );
 
@@ -1112,7 +1136,7 @@ export class AuthService {
       if (historyEntries.length > 0) {
         await tx.passwordHistory.deleteMany({
           where: {
-            id: { in: historyEntries.map((entry) => entry.id) },
+            id: { in: historyEntries.map((entry: any) => entry.id) },
           },
         });
       }

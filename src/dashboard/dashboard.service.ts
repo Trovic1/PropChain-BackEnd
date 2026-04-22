@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Decimal } from '@prisma/client/runtime/library';
 import { PrismaService } from '../database/prisma.service';
 import {
@@ -46,7 +46,7 @@ export class DashboardService {
     });
 
     if (!user) {
-      throw new Error('User not found');
+      throw new NotFoundException('User not found');
     }
 
     return {
@@ -54,9 +54,9 @@ export class DashboardService {
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
-      phone: user.phone ?? undefined,
+      phone: user.phone || undefined,
       role: user.role,
-      avatar: user.avatar ?? undefined,
+      avatar: user.avatar || undefined,
       isVerified: user.isVerified,
       createdAt: user.createdAt,
       memberSince: user.createdAt.toLocaleDateString('en-US', {
