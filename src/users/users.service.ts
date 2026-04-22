@@ -102,6 +102,30 @@ export class UsersService {
     });
   }
 
+  async block(id: string) {
+    return this.prisma.user.update({
+      where: { id },
+      data: { isBlocked: true },
+      select: {
+        id: true,
+        email: true,
+        isBlocked: true,
+      },
+    });
+  }
+
+  async unblock(id: string) {
+    return this.prisma.user.update({
+      where: { id },
+      data: { isBlocked: false },
+      select: {
+        id: true,
+        email: true,
+        isBlocked: true,
+      },
+    });
+  }
+
   async remove(id: string) {
     return this.prisma.user.delete({
       where: { id },

@@ -26,6 +26,16 @@ export class UsersController {
     return this.usersService.update(id, updateUserDto);
   }
 
+  @Post(':id/block')
+  block(@Param('id') id: string) {
+    return this.usersService.block(id);
+  }
+
+  @Post(':id/unblock')
+  unblock(@Param('id') id: string) {
+    return this.usersService.unblock(id);
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.usersService.remove(id);
