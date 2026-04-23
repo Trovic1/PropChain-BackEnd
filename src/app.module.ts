@@ -1,10 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { UsersModule } from './users/users.module';
+import { AuthModule } from './auth/auth.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { SessionsModule } from './sessions/sessions.module';
+import { TrustScoreModule } from './trust-score/trust-score.module';
 import { PropertiesModule } from './properties/properties.module';
 import { PrismaModule } from './database/prisma.module';
 import { AppController } from './app.controller';
-import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -14,8 +17,11 @@ import { AuthModule } from './auth/auth.module';
     }),
     PrismaModule,
     UsersModule,
-    PropertiesModule,
     AuthModule,
+    DashboardModule,
+    SessionsModule,
+    TrustScoreModule,
+    PropertiesModule,
   ],
   controllers: [AppController],
 })
