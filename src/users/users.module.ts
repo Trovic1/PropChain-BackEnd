@@ -21,13 +21,27 @@ import { AuthModule } from '../auth/auth.module';
   imports: [PrismaModule, AuthModule, ScheduleModule.forRoot()],
   controllers: [
     UsersController,
-    AvatarUploadController, 
+    AvatarUploadController,
     UserImportController,
     VerificationDocumentsController,
     AdminVerificationDocumentsController,
     EmailVerificationController,
   ],
-  providers: [UsersService,AvatarUploadService, ScheduledDeletionService, UserImportService, VerificationDocumentsService, EmailVerificationService],
-  exports: [UsersService,AvatarUploadService, ScheduledDeletionService, UserImportService, VerificationDocumentsService, EmailVerificationService],
+  providers: [
+    UsersService,
+    AvatarUploadService,
+    ScheduledDeletionService,
+    UserImportService,
+    VerificationDocumentsService,
+    EmailVerificationService,
+  ],
+  exports: [
+    UsersService,
+    AvatarUploadService,
+    ScheduledDeletionService,
+    UserImportService,
+    VerificationDocumentsService,
+    EmailVerificationService,
+  ],
 })
 export class UsersModule {}

@@ -333,6 +333,8 @@ model VerificationDocument {
   @@index([status])
   @@index([documentType])
   @@map("verification_documents")
+}
+
 // Session model for tracking user sessions
 model Session {
   id            String    @id @default(uuid())
