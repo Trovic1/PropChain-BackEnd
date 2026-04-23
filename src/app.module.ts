@@ -9,6 +9,7 @@ import { PropertiesModule } from './properties/properties.module';
 import { PrismaModule } from './database/prisma.module';
 import { VersioningModule } from './versioning/versioning.module';
 import { ApiDocumentationModule } from './config/api-documentation.module';
+import { CacheModuleConfig } from './cache/cache.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -17,6 +18,7 @@ import { AppController } from './app.controller';
       isGlobal: true,
       envFilePath: ['.env.local', '.env'],
     }),
+    CacheModuleConfig,
     PrismaModule,
     VersioningModule,
     ApiDocumentationModule,

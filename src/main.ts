@@ -3,6 +3,8 @@ import { Logger, ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { VersionHeaderInterceptor } from './versioning/version-header.interceptor';
 import { DeprecationWarningInterceptor } from './versioning/deprecation-warning.interceptor';
+import { CacheMetricsInterceptor } from './cache/cache-metrics.interceptor';
+import { CacheMonitoringService } from './cache/cache-monitoring.service';
 import { setupSwagger } from './config/swagger.config';
 
 async function bootstrap() {
@@ -30,6 +32,10 @@ async function bootstrap() {
   // Apply deprecation warning interceptor
   app.useGlobalInterceptors(new DeprecationWarningInterceptor(app.get('Reflector')));
 
+  // Apply cache metrics interceptor
+  const cacheMonitoringService = app.get(CacheMonitoringService);
+  app.useGlobalInterceptors(new CacheMetricsInterceptor(cacheMonitoringService));
+
   // Setup Swagger documentation
   setupSwagger(app);
 
@@ -39,5 +45,6 @@ async function bootstrap() {
   logger.log(`API Versioning enabled. Supported versions: v1, v2`);
   logger.log(`📚 Swagger UI available at http://localhost:${port}/api/docs`);
   logger.log(`📋 OpenAPI spec available at http://localhost:${port}/api/openapi.json`);
+  logger.log(`💾 Redis Caching enabled`);
 }
 bootstrap();
