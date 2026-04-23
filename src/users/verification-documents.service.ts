@@ -98,7 +98,7 @@ export class VerificationDocumentsService {
   // Admin methods
   async findAllForAdmin(page = 1, limit = 20, status?: string) {
     const skip = (page - 1) * limit;
-      
+
     const where: any = status ? { status: status as VerificationStatus } : {};
 
     const [documents, total] = await Promise.all([
