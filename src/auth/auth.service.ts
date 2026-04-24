@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { User as PrismaUser, ApiKey, TokenType } from '@prisma/client';
+import { User as PrismaUser } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import * as jwt from 'jsonwebtoken';
@@ -41,7 +41,6 @@ import {
   verifyTotpCode,
 } from './security.utils';
 import { AuthUserPayload } from './types/auth-user.type';
-
 import { LoginRateLimitService } from './login-rate-limit.service';
 import { UserRole } from '../types/prisma.types';
 
@@ -90,7 +89,15 @@ export class AuthService {
   /**
    * Helper to map transactions to activity items for dashboard
    */
-  private transactionsToActivityItems(transactions: any[], type: 'purchase' | 'sale') {
+  private transactionsToActivityItems(
+    transactions: Array<{
+      id: string;
+      property: { title?: string };
+      amount: string | number | bigint;
+      createdAt: Date | string;
+    }>,
+    type: 'purchase' | 'sale',
+  ) {
     return transactions.map((tx) => ({
       type: 'transaction' as const,
       id: tx.id,
@@ -311,7 +318,12 @@ export class AuthService {
    * Handle token reuse detection - invalidate entire token family
    */
   private async handleTokenReuse(
-    blacklistedToken: any,
+    blacklistedToken: {
+      jti: string;
+      tokenFamily: string | null;
+      ipAddress: string | null;
+      userAgent: string | null;
+    },
     reusedJti: string,
     ipAddress?: string,
     userAgent?: string,
@@ -481,14 +493,9 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
-    const [properties, buyerTransactions, sellerTransactions, documents, apiKeys] =
-      await Promise.all([
-        this.prisma.property.findMany({
-          where: { ownerId: user.sub },
-          orderBy: { createdAt: 'desc' },
-          take: 10,
-        }),
-        this.prisma.transaction.findMany({
+     const [buyerTransactions, sellerTransactions, documents, apiKeys] =
+       await Promise.all([
+         this.prisma.transaction.findMany({
           where: { buyerId: user.sub },
           orderBy: { createdAt: 'desc' },
           take: 5,
@@ -584,17 +591,17 @@ export class AuthService {
       },
     });
 
-    const recentActivity = [
-      ...this.transactionsToActivityItems(buyerTransactions, 'purchase'),
-      ...this.transactionsToActivityItems(sellerTransactions, 'sale'),
-      ...documents.map((doc: any) => ({
-        type: 'document' as const,
-        id: doc.id,
-        title: doc.fileName,
-        description: `Uploaded ${doc.documentType.toLowerCase().replace('_', ' ')}`,
-        timestamp: doc.createdAt,
-      })),
-    ]
+     const recentActivity = [
+       ...this.transactionsToActivityItems(buyerTransactions, 'purchase'),
+       ...this.transactionsToActivityItems(sellerTransactions, 'sale'),
+       ...documents.map((doc: { id: string; fileName: string; documentType: string; createdAt: Date | string }) => ({
+         type: 'document' as const,
+         id: doc.id,
+         title: doc.fileName,
+         description: `Uploaded ${doc.documentType.toLowerCase().replace('_', ' ')}`,
+         timestamp: doc.createdAt,
+       })),
+     ]
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       .slice(0, 10);
 
@@ -611,21 +618,35 @@ export class AuthService {
         apiKeysCount: apiKeys.length,
       },
       recentActivity,
-      recommendations: recommendationProperties.map((p: any) => ({
-        id: p.id,
-        title: p.title,
-        address: p.address,
-        city: p.city,
-        state: p.state,
-        price: p.price.toString(),
-        propertyType: p.propertyType,
-        bedrooms: p.bedrooms,
-        bathrooms: p.bathrooms?.toString(),
-        squareFeet: p.squareFeet?.toString(),
-        status: p.status,
-        agent: `${p.owner.firstName} ${p.owner.lastName}`,
-        createdAt: p.createdAt,
-      })),
+       recommendations: recommendationProperties.map((p: {
+         id: string;
+         title: string;
+         address: string;
+         city: string;
+         state: string;
+         price: string | number | bigint;
+         propertyType: string;
+         bedrooms?: number | null;
+         bathrooms?: string | number | bigint | null;
+         squareFeet?: string | number | bigint | null;
+         status: string;
+         owner: { firstName: string; lastName: string };
+         createdAt: Date | string;
+       }) => ({
+         id: p.id,
+         title: p.title,
+         address: p.address,
+         city: p.city,
+         state: p.state,
+         price: p.price.toString(),
+         propertyType: p.propertyType,
+         bedrooms: p.bedrooms,
+         bathrooms: p.bathrooms?.toString(),
+         squareFeet: p.squareFeet?.toString(),
+         status: p.status,
+         agent: `${p.owner.firstName} ${p.owner.lastName}`,
+         createdAt: p.createdAt,
+       })),
     };
   }
 
