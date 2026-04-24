@@ -1,48 +1,47 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/database/prisma.service';
 
 @Injectable()
 export class ContentService {
-  constructor(private prisma: PrismaService) {}
+  private pages = new Map<string, any>();
+  private banners: any[] = [];
+  private faqs: any[] = [];
+  private legal = new Map<string, string>();
 
-  // Pages
   updatePage(slug: string, data: { title: string; content: string }) {
-    return this.prisma.page.upsert({
-      where: { slug },
-      update: data,
-      create: { slug, ...data },
-    });
+    this.pages.set(slug, { slug, ...data });
+    return this.pages.get(slug);
   }
 
   getPage(slug: string) {
-    return this.prisma.page.findUnique({ where: { slug } });
+    return this.pages.get(slug) || null;
   }
 
   createBanner(data: { imageUrl: string; link?: string }) {
-    return this.prisma.banner.create({ data });
+    const banner = { id: Date.now().toString(), ...data };
+    this.banners.push(banner);
+    return banner;
   }
 
   getBanners() {
-    return this.prisma.banner.findMany();
+    return this.banners;
   }
 
   createFAQ(data: { question: string; answer: string }) {
-    return this.prisma.fAQ.create({ data });
+    const faq = { id: Date.now().toString(), ...data };
+    this.faqs.push(faq);
+    return faq;
   }
 
   getFAQs() {
-    return this.prisma.fAQ.findMany();
+    return this.faqs;
   }
 
   updateLegal(type: string, content: string) {
-    return this.prisma.legal.upsert({
-      where: { type },
-      update: { content },
-      create: { type, content },
-    });
+    this.legal.set(type, content);
+    return { type, content };
   }
 
   getLegal(type: string) {
-    return this.prisma.legal.findUnique({ where: { type } });
+    return this.legal.get(type) || null;
   }
 }
