@@ -6,11 +6,13 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { SessionsModule } from './sessions/sessions.module';
 import { TrustScoreModule } from './trust-score/trust-score.module';
 import { PropertiesModule } from './properties/properties.module';
+import { DocumentsModule } from './documents/documents.module';
 import { PrismaModule } from './database/prisma.module';
 import { VersioningModule } from './versioning/versioning.module';
 import { ApiDocumentationModule } from './config/api-documentation.module';
 import { CacheModuleConfig } from './cache/cache.module';
 import { AppController } from './app.controller';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -28,6 +30,8 @@ import { AppController } from './app.controller';
     SessionsModule,
     TrustScoreModule,
     PropertiesModule,
+    AdminModule,
+    DocumentsModule,
   ],
   controllers: [AppController],
 })
