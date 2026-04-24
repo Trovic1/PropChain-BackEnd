@@ -54,6 +54,21 @@ type JwtPayload = {
   exp?: number;
 };
 
+type ApiKeyWithSecrets = {
+  id: string;
+  userId: string;
+  name: string;
+  keyPrefix: string;
+  keyHash: string;
+  permissions: string[];
+  usageCount: number;
+  lastUsedAt: Date | null;
+  expiresAt: Date | null;
+  revokedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -832,14 +847,14 @@ export class AuthService {
     };
   }
 
-  async listApiKeys(user: AuthUserPayload) {
-    const apiKeys = await this.prisma.apiKey.findMany({
-      where: { userId: user.sub },
-      orderBy: { createdAt: 'desc' },
-    });
+   async listApiKeys(user: AuthUserPayload) {
+     const apiKeys = await this.prisma.apiKey.findMany({
+       where: { userId: user.sub },
+       orderBy: { createdAt: 'desc' },
+     });
 
-    return apiKeys.map((apiKey: any) => this.toApiKeyResponse(apiKey));
-  }
+     return apiKeys.map((apiKey) => this.toApiKeyResponse(apiKey));
+   }
 
   async rotateApiKey(user: AuthUserPayload, apiKeyId: string) {
     const apiKey = await this.prisma.apiKey.findFirst({
@@ -1137,20 +1152,20 @@ export class AuthService {
     return `pc_${randomToken(24)}`;
   }
 
-  private toApiKeyResponse(apiKey: any) {
-    return {
-      id: apiKey.id,
-      name: apiKey.name,
-      keyPrefix: apiKey.keyPrefix,
-      permissions: apiKey.permissions,
-      usageCount: apiKey.usageCount,
-      lastUsedAt: apiKey.lastUsedAt,
-      expiresAt: apiKey.expiresAt,
-      revokedAt: apiKey.revokedAt,
-      createdAt: apiKey.createdAt,
-      updatedAt: apiKey.updatedAt,
-    };
-  }
+   private toApiKeyResponse(apiKey: ApiKeyWithSecrets) {
+     return {
+       id: apiKey.id,
+       name: apiKey.name,
+       keyPrefix: apiKey.keyPrefix,
+       permissions: apiKey.permissions,
+       usageCount: apiKey.usageCount,
+       lastUsedAt: apiKey.lastUsedAt,
+       expiresAt: apiKey.expiresAt,
+       revokedAt: apiKey.revokedAt,
+       createdAt: apiKey.createdAt,
+       updatedAt: apiKey.updatedAt,
+     };
+   }
 
   private normalizePermissions(permissions?: string[]) {
     if (!permissions || permissions.length === 0) {
@@ -1268,13 +1283,13 @@ export class AuthService {
         skip: passwordHistoryLimit,
       });
 
-      if (historyEntries.length > 0) {
-        await tx.passwordHistory.deleteMany({
-          where: {
-            id: { in: historyEntries.map((entry: any) => entry.id) },
-          },
-        });
-      }
+       if (historyEntries.length > 0) {
+         await tx.passwordHistory.deleteMany({
+           where: {
+             id: { in: historyEntries.map((entry: { id: string }) => entry.id) },
+           },
+         });
+       }
     });
   }
 
