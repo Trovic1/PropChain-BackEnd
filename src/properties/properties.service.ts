@@ -1,23 +1,21 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
-import {
-  SearchCriteriaDto,
-  PropertySearchFilters,
-  CursorPaginationInput,
-  SearchSortOptions,
-  SearchResultItem,
-  PaginatedSearchResponse,
-  PropertyWhere,
-  PropertyOrderBy,
-} from './dto/search.dto';
+import { CreatePropertyDto, UpdatePropertyDto } from './dto/property.dto';
+import { FraudService } from '../fraud/fraud.service';
+
+interface FindAllParams {
+  skip?: number;
+  take?: number;
+  where?: Record<string, unknown>;
+  orderBy?: Record<string, 'asc' | 'desc'>;
+}
 
 @Injectable()
 export class PropertiesService {
-  private readonly logger = new Logger(PropertiesService.name);
-  private readonly DEFAULT_LIMIT = 20;
-  private readonly MAX_LIMIT = 100;
-
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly fraudService: FraudService,
+  ) {}
 
   /**
    * Optimized search with cursor-based pagination
@@ -209,7 +207,7 @@ export class PropertiesService {
   async create(createPropertyDto: any, ownerId: string) {
     const { price, squareFeet, lotSize, ...rest } = createPropertyDto;
 
-    return (this.prisma as any).property.create({
+    const property = await this.prisma.property.create({
       data: {
         ...rest,
         price: new (require('@prisma/client/runtime/library').Decimal)(price.toString()),
@@ -228,6 +226,10 @@ export class PropertiesService {
         },
       },
     });
+
+    await this.fraudService.evaluatePropertyCreated(property.id);
+
+    return property;
   }
 
   async findAll(params?: any) {
