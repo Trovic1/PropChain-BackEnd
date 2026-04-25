@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
-import { CreateSavedSearchDto, UpdateSavedSearchDto, SavedSearchResponse } from './dto/saved-search.dto';
+import {
+  CreateSavedSearchDto,
+  UpdateSavedSearchDto,
+  SavedSearchResponse,
+} from './dto/saved-search.dto';
 
 @Injectable()
 export class SavedSearchService {
@@ -392,5 +396,76 @@ export class SavedSearchAlertService {
     });
 
     this.logger.debug(`Created ${propertyIds.length} alerts for saved search ${savedSearchId}`);
+  }
+
+  /**
+   * Get unnotified alerts for a user
+   */
+  async getUnnotifiedAlerts(userId: string) {
+    return (this.prisma as any).searchAlert.findMany({
+      where: {
+        savedSearch: {
+          userId,
+        },
+        notified: false,
+      },
+      include: {
+        property: {
+          select: {
+            id: true,
+            title: true,
+            price: true,
+            status: true,
+          },
+        },
+        savedSearch: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /**
+   * Mark alerts as notified
+   */
+  async markAlertsAsNotified(alertIds: string[]): Promise<void> {
+    await (this.prisma as any).searchAlert.updateMany({
+      where: { id: { in: alertIds } },
+      data: { notified: true, notifiedAt: new Date() },
+    });
+  }
+
+  /**
+   * Get search statistics for a user
+   */
+  async getSearchStats(userId: string) {
+    const [totalSavedSearches, totalAlerts, unnotifiedAlerts] = await Promise.all([
+      (this.prisma as any).savedSearch.count({ where: { userId } }),
+      (this.prisma as any).searchAlert.count({
+        where: {
+          savedSearch: {
+            userId,
+          },
+        },
+      }),
+      (this.prisma as any).searchAlert.count({
+        where: {
+          savedSearch: {
+            userId,
+          },
+          notified: false,
+        },
+      }),
+    ]);
+
+    return {
+      totalSavedSearches,
+      totalAlerts,
+      unnotifiedAlerts,
+    };
   }
 }

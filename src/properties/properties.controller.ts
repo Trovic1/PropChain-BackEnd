@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Put,
+  Delete,
+  UseGuards,
+  Query,
+  NotFoundException,
+} from '@nestjs/common';
 import { PropertiesService } from './properties.service';
 import { SearchCriteriaDto, PaginatedSearchResponse } from './dto/search.dto';
 import { CreatePropertyDto, UpdatePropertyDto } from './dto/property.dto';
@@ -65,7 +76,7 @@ export class PropertiesController {
   }
 
   /**
-   * Get saved search by ID
+   * Find saved search by ID
    * GET /properties/saved-searches/:id
    */
   @Get('saved-searches/:id')
@@ -74,7 +85,11 @@ export class PropertiesController {
     @Param('id') id: string,
     @CurrentUser() user: AuthUserPayload,
   ): Promise<SavedSearchResponse> {
-    return this.savedSearchService.findById(id, user.sub);
+    const result = await this.savedSearchService.findById(id, user.sub);
+    if (!result) {
+      throw new NotFoundException('Saved search not found');
+    }
+    return result;
   }
 
   /**

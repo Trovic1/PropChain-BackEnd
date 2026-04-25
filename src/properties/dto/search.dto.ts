@@ -1,11 +1,33 @@
-import { IsOptional, IsNumber, IsString, IsBoolean, IsArray, IsIn, Min, Max } from 'class-validator';
+import {
+  IsOptional,
+  IsNumber,
+  IsString,
+  IsBoolean,
+  IsArray,
+  IsIn,
+  Min,
+  Max,
+} from 'class-validator';
 import { InputType, Field, Float } from '@nestjs/graphql';
 
 // Sort fields (as string literals for GraphQL enum)
-export const PROPERTY_SORT_FIELDS = ['price', 'createdAt', 'squareFeet', 'bedrooms', 'bathrooms', 'yearBuilt'];
+export const PROPERTY_SORT_FIELDS = [
+  'price',
+  'createdAt',
+  'squareFeet',
+  'bedrooms',
+  'bathrooms',
+  'yearBuilt',
+];
 export const SORT_DIRECTION = ['asc', 'desc'];
 
-export type PropertySortField = 'price' | 'createdAt' | 'squareFeet' | 'bedrooms' | 'bathrooms' | 'yearBuilt';
+export type PropertySortField =
+  | 'price'
+  | 'createdAt'
+  | 'squareFeet'
+  | 'bedrooms'
+  | 'bathrooms'
+  | 'yearBuilt';
 export type SortDirection = 'asc' | 'desc';
 
 @InputType()

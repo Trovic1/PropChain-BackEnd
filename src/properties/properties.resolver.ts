@@ -49,4 +49,3 @@ export class PropertiesResolver {
     return this.pubSub.asyncIterator('propertyAdded');
   }
 }
-

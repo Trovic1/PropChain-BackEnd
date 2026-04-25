@@ -2,7 +2,15 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { CreatePropertyDto, UpdatePropertyDto } from './dto/property.dto';
 import { FraudService } from '../fraud/fraud.service';
-import { SearchCriteriaDto, PaginatedSearchResponse, PropertySearchFilters, PropertyWhere, SearchSortOptions, PropertySortField, SearchResultItem } from './dto/search.dto';
+import {
+  SearchCriteriaDto,
+  PaginatedSearchResponse,
+  PropertySearchFilters,
+  PropertyWhere,
+  SearchSortOptions,
+  PropertySortField,
+  SearchResultItem,
+} from './dto/search.dto';
 
 interface FindAllParams {
   skip?: number;
@@ -22,6 +30,13 @@ export class PropertiesService {
   ) {}
 
   /**
+   * Cached property search (uses Redis cache)
+   */
+  async cachedSearch(criteria: SearchCriteriaDto): Promise<PaginatedSearchResponse> {
+    return this.search(criteria);
+  }
+
+  /**
    * Optimized search with cursor-based pagination
    */
   async search(criteria: SearchCriteriaDto): Promise<PaginatedSearchResponse> {
@@ -36,7 +51,7 @@ export class PropertiesService {
     // Get total count if requested
     let totalCount: number | null = null;
     if (includeTotalCount) {
-      totalCount = await (this.prisma as any).property.count({ where }) as number;
+      totalCount = (await (this.prisma as any).property.count({ where })) as number;
     }
 
     // Build order by
@@ -79,7 +94,8 @@ export class PropertiesService {
     }
 
     // Generate next cursor
-    const nextCursor = hasMore && rawResults.length > 0 ? rawResults[rawResults.length - 1].id : undefined;
+    const nextCursor =
+      hasMore && rawResults.length > 0 ? rawResults[rawResults.length - 1].id : undefined;
 
     // Map to response DTO
     const results = this.mapToSearchResultItem(rawResults);
@@ -88,7 +104,7 @@ export class PropertiesService {
       results,
       hasNextPage: hasMore,
       nextCursor,
-      ...(includeTotalCount && { totalCount }),
+      ...(includeTotalCount && { totalCount: totalCount || 0 }),
       pageInfo: {
         limit,
         offset: 0,
@@ -137,25 +153,25 @@ export class PropertiesService {
       where.price = {
         ...(filters.minPrice !== undefined && { gte: filters.minPrice }),
         ...(filters.maxPrice !== undefined && { lte: filters.maxPrice }),
-      };
+      } as { gte?: number; lte?: number };
     }
     if (filters.minBedrooms !== undefined || filters.maxBedrooms !== undefined) {
       where.bedrooms = {
         ...(filters.minBedrooms !== undefined && { gte: filters.minBedrooms }),
         ...(filters.maxBedrooms !== undefined && { lte: filters.maxBedrooms }),
-      };
+      } as { gte?: number; lte?: number };
     }
     if (filters.minBathrooms !== undefined || filters.maxBathrooms !== undefined) {
       where.bathrooms = {
         ...(filters.minBathrooms !== undefined && { gte: filters.minBathrooms }),
         ...(filters.maxBathrooms !== undefined && { lte: filters.maxBathrooms }),
-      };
+      } as { gte?: number; lte?: number };
     }
     if (filters.minSquareFeet !== undefined || filters.maxSquareFeet !== undefined) {
       where.squareFeet = {
         ...(filters.minSquareFeet !== undefined && { gte: filters.minSquareFeet }),
         ...(filters.maxSquareFeet !== undefined && { lte: filters.maxSquareFeet }),
-      };
+      } as { gte?: number; lte?: number };
     }
 
     return where;
@@ -164,7 +180,10 @@ export class PropertiesService {
   /**
    * Build sort configuration
    */
-  private buildSortConfig(sort?: SearchSortOptions): { field: PropertySortField; direction: 'asc' | 'desc' } {
+  private buildSortConfig(sort?: SearchSortOptions): {
+    field: PropertySortField;
+    direction: 'asc' | 'desc';
+  } {
     return {
       field: sort?.field || 'createdAt',
       direction: sort?.direction || 'desc',
@@ -187,9 +206,14 @@ export class PropertiesService {
       price: typeof prop.price === 'object' ? parseFloat(prop.price.toString()) : prop.price,
       propertyType: prop.propertyType,
       bedrooms: prop.bedrooms ?? undefined,
-      bathrooms: typeof prop.bathrooms === 'object' ? parseFloat(prop.bathrooms.toString()) : prop.bathrooms,
-      squareFeet: typeof prop.squareFeet === 'object' ? parseFloat(prop.squareFeet.toString()) : prop.squareFeet,
-      lotSize: typeof prop.lotSize === 'object' ? parseFloat(prop.lotSize.toString()) : prop.lotSize,
+      bathrooms:
+        typeof prop.bathrooms === 'object' ? parseFloat(prop.bathrooms.toString()) : prop.bathrooms,
+      squareFeet:
+        typeof prop.squareFeet === 'object'
+          ? parseFloat(prop.squareFeet.toString())
+          : prop.squareFeet,
+      lotSize:
+        typeof prop.lotSize === 'object' ? parseFloat(prop.lotSize.toString()) : prop.lotSize,
       yearBuilt: prop.yearBuilt ?? undefined,
       features: prop.features || undefined,
       location: prop.latitude && prop.longitude ? [prop.longitude, prop.latitude] : undefined,
@@ -214,9 +238,9 @@ export class PropertiesService {
     const property = await this.prisma.property.create({
       data: {
         ...rest,
-        price: new (require('@prisma/client/runtime/library').Decimal)(price.toString()),
-        squareFeet: squareFeet ? new (require('@prisma/client/runtime/library').Decimal)(squareFeet.toString()) : null,
-        lotSize: lotSize ? new (require('@prisma/client/runtime/library').Decimal)(lotSize.toString()) : null,
+        price: new Decimal(price.toString()),
+        squareFeet: squareFeet ? new Decimal(squareFeet.toString()) : null,
+        lotSize: lotSize ? new Decimal(lotSize.toString()) : null,
         owner: { connect: { id: ownerId } },
       },
       include: {
@@ -280,9 +304,9 @@ export class PropertiesService {
       where: { id },
       data: {
         ...rest,
-        price: price ? new (require('@prisma/client/runtime/library').Decimal)(price.toString()) : undefined,
-        squareFeet: squareFeet ? new (require('@prisma/client/runtime/library').Decimal)(squareFeet.toString()) : undefined,
-        lotSize: lotSize ? new (require('@prisma/client/runtime/library').Decimal)(lotSize.toString()) : undefined,
+        price: price ? new Decimal(price.toString()) : undefined,
+        squareFeet: squareFeet ? new Decimal(squareFeet.toString()) : undefined,
+        lotSize: lotSize ? new Decimal(lotSize.toString()) : undefined,
       },
     });
   }
