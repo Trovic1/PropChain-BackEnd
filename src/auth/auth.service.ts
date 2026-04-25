@@ -167,7 +167,6 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const passwordMatches = await comparePassword(data.password, user.password ?? '');
     if (user.isBlocked) {
       throw new UnauthorizedException('Your account has been blocked. Please contact support.');
     }
@@ -178,7 +177,7 @@ export class AuthService {
       );
     }
 
-    const passwordMatches = await comparePassword(data.password, user.password);
+    const passwordMatches = await comparePassword(data.password, user.password ?? '');
     if (!passwordMatches) {
       // Record failed login attempt
       const shouldLock = await this.rateLimitService.recordFailedAttempt(
@@ -933,6 +932,8 @@ export class AuthService {
 
     const tokens = await this.issueTokenPair(user);
     return { user: sanitizeUser(user), ...tokens };
+  }
+
   async updateApiKeyPermissions(
     user: AuthUserPayload,
     apiKeyId: string,

@@ -111,36 +111,10 @@ enum BounceType {
 
 // User model
 model User {
-  id            String    @id @default(uuid())
-  email         String    @unique
-  password      String?
-  googleId      String?   @unique @map("google_id")
-  firstName     String    @map("first_name")
-  lastName      String    @map("last_name")
-  phone         String?
-  role          UserRole  @default(USER)
-  isVerified    Boolean   @default(false) @map("is_verified")
-  isBlocked     Boolean   @default(false) @map("is_blocked")
-  isDeactivated Boolean   @default(false) @map("is_deactivated")
-  deactivatedAt DateTime? @map("deactivated_at")
-  scheduledDeletionAt DateTime? @map("scheduled_deletion_at")
-  twoFactorEnabled Boolean @default(false) @map("two_factor_enabled")
-  twoFactorSecret  String? @map("two_factor_secret")
-  twoFactorBackupCodes String[] @default([]) @map("two_factor_backup_codes")
-  avatar        String?
-  trustScore    Int       @default(0) @map("trust_score")
-  lastTrustScoreUpdate DateTime? @map("last_trust_score_update")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  preferredChannel String?  @map("preferred_channel")
-  languagePreference String? @map("language_preference")
-  timezone String? @map("timezone")
-  contactHours Json? @map("contact_hours")
-  referralCode String? @unique @map("referral_code")
-  referredById String? @map("referred_by_id")
   id                       String    @id @default(uuid())
   email                    String    @unique
-  password                 String
+  password                 String?
+  googleId                 String?   @unique @map("google_id")
   firstName                String    @map("first_name")
   lastName                 String    @map("last_name")
   phone                    String?
